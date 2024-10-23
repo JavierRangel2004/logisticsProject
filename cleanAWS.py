@@ -2,6 +2,8 @@
 
 import pandas as pd
 import numpy as np
+import random
+from datetime import datetime, timedelta
 
 def preprocess_amazon_sales(input_file, output_file):
     """
@@ -94,13 +96,85 @@ def preprocess_amazon_sales(input_file, output_file):
     df['main_category'] = df['main_category'].astype('category')
     df['price_category'] = df['price_category'].astype('category')
     
-    # Final DataFrame information
-    print("\nPreprocessed DataFrame Info:")
-    print(df.info())
+    # --- Synthetic Time Series Data Generation ---
+    # Define time range
+    start_date = datetime(2023, 1, 1)
+    periods = 52  # Weekly data for one year
+    freq = 'W'  # Weekly frequency
     
-    # Save the preprocessed data to the output file
-    df.to_csv(output_file, index=False)
-    print(f"\nPreprocessed data saved to {output_file}")
+    # Generate synthetic sales data
+    synthetic_data = []
+    
+    for index, row in df.iterrows():
+        product_id = row['product_id']
+        product_name = row['product_name']
+        category = row['main_category']
+        price = row['discounted_price']
+        rating = row['rating']
+        rating_count = row['rating_count']
+        
+        # Simulate sales over time with some randomness
+        sales = []
+        for week in range(periods):
+            date = start_date + timedelta(weeks=week)
+            # Base sales influenced by price and rating
+            base = max(1, 100 - (price / 10) + (rating * 10))
+            # Introduce seasonality (e.g., higher sales in certain weeks)
+            seasonal = 1 + 0.1 * np.sin(2 * np.pi * week / periods)
+            # Random fluctuation
+            random_factor = np.random.normal(1.0, 0.1)
+            weekly_sales = max(0, int(base * seasonal * random_factor))
+            sales.append({
+                'product_id': product_id,
+                'product_name': product_name,
+                'category': category,
+                'brand': row['brand'],
+                'date': date,
+                'weekly_sales': weekly_sales,
+                'discounted_price': price,
+                'actual_price': row['actual_price'],
+                'discount_percentage': row['discount_percentage'],
+                'rating': rating,
+                'rating_count': rating_count
+            })
+        
+        synthetic_data.extend(sales)
+    
+    sales_df = pd.DataFrame(synthetic_data)
+    print("\nSynthetic Sales Data Sample:")
+    print(sales_df.head())
+    
+    # --- Feature Engineering for Forecasting ---
+    # Extract additional time-based features
+    sales_df['year'] = sales_df['date'].dt.year
+    sales_df['month'] = sales_df['date'].dt.month
+    sales_df['week'] = sales_df['date'].dt.isocalendar().week
+    sales_df['day_of_week'] = sales_df['date'].dt.dayofweek
+    sales_df['is_holiday_season'] = sales_df['month'].isin([11, 12, 1, 2])  # Example: Nov-Feb as holiday season
+    
+    # Aggregate data at product level per week
+    aggregated_df = sales_df.groupby(['product_id', 'date']).agg({
+        'weekly_sales': 'sum',
+        'discounted_price': 'first',
+        'actual_price': 'first',
+        'discount_percentage': 'first',
+        'rating': 'first',
+        'rating_count': 'first',
+        'brand': 'first',
+        'category': 'first',
+        'year': 'first',
+        'month': 'first',
+        'week': 'first',
+        'day_of_week': 'first',
+        'is_holiday_season': 'first'
+    }).reset_index()
+    
+    print("\nAggregated Sales Data Sample:")
+    print(aggregated_df.head())
+    
+    # --- Save the Preprocessed Data ---
+    aggregated_df.to_csv(output_file, index=False)
+    print(f"\nPreprocessed data with synthetic sales saved to {output_file}")
 
 if __name__ == "__main__":
     # Specify input and output file paths
