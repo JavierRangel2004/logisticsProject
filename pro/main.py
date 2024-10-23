@@ -377,7 +377,8 @@ def main():
     input_file = 'amazon.csv'  # Replace with your actual input file path
     products_output = 'products.csv'
     sales_output = 'sales.csv'
-    preprocess_and_generate_synthetic_data(input_file, products_output, sales_output)
+    #comment out to not generate new data
+    # preprocess_and_generate_synthetic_data(input_file, products_output, sales_output)
 
     # Step 2: Load the preprocessed data with proper date parsing
     products_df = pd.read_csv(products_output)
