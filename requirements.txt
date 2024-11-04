@@ -5,3 +5,4 @@ xgboost
 prophet
 statsmodels
 numpy
+pmdarima

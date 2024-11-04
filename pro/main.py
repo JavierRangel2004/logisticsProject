@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 # Suppress warnings for cleaner output
 warnings.filterwarnings("ignore")
 
+
 def preprocess_and_generate_synthetic_data(input_file, products_output, sales_output):
     """
     Preprocesses the Amazon Sales Dataset, separates product attributes and sales data,
@@ -45,21 +46,27 @@ def preprocess_and_generate_synthetic_data(input_file, products_output, sales_ou
     # Clean price columns
     price_columns = ['discounted_price', 'actual_price']
     for col in price_columns:
-        products_df[col] = products_df[col].str.replace('₹', '').str.replace(',', '').astype(float)
+        products_df[col] = products_df[col].str.replace(
+            '₹', '').str.replace(',', '').astype(float)
 
     # Clean discount_percentage
-    products_df['discount_percentage'] = products_df['discount_percentage'].str.replace('%', '').astype(float)
+    products_df['discount_percentage'] = products_df['discount_percentage'].str.replace(
+        '%', '').astype(float)
 
     # Clean rating
-    products_df['rating'] = pd.to_numeric(products_df['rating'], errors='coerce')
+    products_df['rating'] = pd.to_numeric(
+        products_df['rating'], errors='coerce')
 
     # Clean rating_count
-    products_df['rating_count'] = products_df['rating_count'].str.replace(',', '').astype(float).astype('Int64')
+    products_df['rating_count'] = products_df['rating_count'].str.replace(
+        ',', '').astype(float).astype('Int64')
     median_rating_count = products_df['rating_count'].median()
-    products_df['rating_count'] = products_df['rating_count'].fillna(median_rating_count)
+    products_df['rating_count'] = products_df['rating_count'].fillna(
+        median_rating_count)
 
     # Extract main_category
-    products_df['main_category'] = products_df['category'].str.split('|').str[0]
+    products_df['main_category'] = products_df['category'].str.split(
+        '|').str[0]
 
     # Extract brand from product_name (assuming brand is the first word)
     products_df['brand'] = products_df['product_name'].str.split().str[0]
@@ -70,7 +77,8 @@ def preprocess_and_generate_synthetic_data(input_file, products_output, sales_ou
                                'rating', 'rating_count']]
 
     # Convert to categorical types where appropriate
-    products_df['main_category'] = products_df['main_category'].astype('category')
+    products_df['main_category'] = products_df['main_category'].astype(
+        'category')
     products_df['brand'] = products_df['brand'].astype('category')
 
     # Save the products dataset
@@ -118,14 +126,16 @@ def preprocess_and_generate_synthetic_data(input_file, products_output, sales_ou
     sales_df['month'] = sales_df['date'].dt.month
     sales_df['week'] = sales_df['date'].dt.isocalendar().week
     sales_df['day_of_week'] = sales_df['date'].dt.dayofweek
-    sales_df['is_holiday_season'] = sales_df['month'].isin([11, 12, 1, 2])  # Example: Nov-Feb as holiday season
+    sales_df['is_holiday_season'] = sales_df['month'].isin(
+        [11, 12, 1, 2])  # Example: Nov-Feb as holiday season
 
     # Save the sales dataset
     sales_df.to_csv(sales_output, index=False)
     print(f"\nSales data saved to {sales_output}")
     print(sales_df.head())
 
-def train_arima_model(merged_df, product_id, order=(5,1,0)):
+
+def train_arima_model(merged_df, product_id, order=(5, 1, 0)):
     """
     Trains an ARIMA model for a specific product.
 
@@ -139,7 +149,8 @@ def train_arima_model(merged_df, product_id, order=(5,1,0)):
     - forecast: The forecasted values.
     """
     # Filter data for the specific product
-    product_data = merged_df[merged_df['product_id'] == product_id].sort_values('date')
+    product_data = merged_df[merged_df['product_id']
+                             == product_id].sort_values('date')
     product_data.set_index('date', inplace=True)
 
     # Ensure the index is datetime
@@ -158,15 +169,19 @@ def train_arima_model(merged_df, product_id, order=(5,1,0)):
 
     # Create future dates for plotting
     last_date = product_data.index[-1]
-    future_dates = [last_date + timedelta(weeks=i) for i in range(1, forecast_steps + 1)]
+    future_dates = [last_date + timedelta(weeks=i)
+                    for i in range(1, forecast_steps + 1)]
 
     # Convert forecast to a DataFrame for plotting
-    forecast_df = pd.DataFrame({'weekly_sales': forecast.values}, index=future_dates)
+    forecast_df = pd.DataFrame(
+        {'weekly_sales': forecast.values}, index=future_dates)
 
     # Plot
-    plt.figure(figsize=(12,6))
-    plt.plot(product_data.index, product_data['weekly_sales'], label='Historical Sales')
-    plt.plot(forecast_df.index, forecast_df['weekly_sales'], label='Forecasted Sales', marker='o')
+    plt.figure(figsize=(12, 6))
+    plt.plot(product_data.index,
+             product_data['weekly_sales'], label='Historical Sales')
+    plt.plot(forecast_df.index,
+             forecast_df['weekly_sales'], label='Forecasted Sales', marker='o')
     plt.title(f'ARIMA Forecast for Product {product_id}')
     plt.xlabel('Date')
     plt.ylabel('Weekly Sales')
@@ -175,9 +190,11 @@ def train_arima_model(merged_df, product_id, order=(5,1,0)):
     plt.show()
 
     # Since we don't have actual sales for the forecasted period, we can't compute MAE and RMSE
-    print(f"ARIMA Model - Product ID: {product_id}, Forecasted next {forecast_steps} weeks.")
+    print(
+        f"ARIMA Model - Product ID: {product_id}, Forecasted next {forecast_steps} weeks.")
 
     return model_fit, forecast_df
+
 
 def train_prophet_model(merged_df, product_id):
     """
@@ -192,8 +209,10 @@ def train_prophet_model(merged_df, product_id):
     - forecast: The forecasted values.
     """
     # Filter data for the specific product
-    product_data = merged_df[merged_df['product_id'] == product_id].sort_values('date')
-    product_data = product_data.rename(columns={'date': 'ds', 'weekly_sales': 'y'})
+    product_data = merged_df[merged_df['product_id']
+                             == product_id].sort_values('date')
+    product_data = product_data.rename(
+        columns={'date': 'ds', 'weekly_sales': 'y'})
 
     # Initialize and train Prophet model with additional regressor
     model = Prophet()
@@ -222,9 +241,11 @@ def train_prophet_model(merged_df, product_id):
     plt.show()
 
     # Since we don't have actual sales for the forecasted period, we can't compute MAE and RMSE
-    print(f"Prophet Model - Product ID: {product_id}, Forecasted next {forecast_steps} weeks.")
+    print(
+        f"Prophet Model - Product ID: {product_id}, Forecasted next {forecast_steps} weeks.")
 
     return model, forecast_df
+
 
 def train_random_forest(merged_df, product_id):
     """
@@ -239,10 +260,12 @@ def train_random_forest(merged_df, product_id):
     - predictions: The predicted sales.
     """
     # Filter data for the specific product
-    product_data = merged_df[merged_df['product_id'] == product_id].sort_values('date')
+    product_data = merged_df[merged_df['product_id']
+                             == product_id].sort_values('date')
 
     # Feature Engineering: Define features and target
-    features = ['discounted_price', 'actual_price', 'discount_percentage', 'rating', 'rating_count', 'month', 'week', 'is_holiday_season']
+    features = ['discounted_price', 'actual_price', 'discount_percentage',
+                'rating', 'rating_count', 'month', 'week', 'is_holiday_season']
     X = product_data[features]
     y = product_data['weekly_sales']
 
@@ -253,8 +276,9 @@ def train_random_forest(merged_df, product_id):
     # Define the forecast period (next 4 weeks)
     forecast_steps = 4
     last_date = product_data['date'].max()
-    future_dates = [last_date + timedelta(weeks=i) for i in range(1, forecast_steps + 1)]
-    
+    future_dates = [last_date + timedelta(weeks=i)
+                    for i in range(1, forecast_steps + 1)]
+
     # Create synthetic future data for prediction
     # Here, we assume that discount, price, rating remain the same, and set 'is_holiday_season' based on month
     last_product = product_data.iloc[-1]
@@ -283,9 +307,11 @@ def train_random_forest(merged_df, product_id):
     })
 
     # Plot historical and forecasted sales
-    plt.figure(figsize=(12,6))
-    plt.plot(product_data['date'], product_data['weekly_sales'], label='Historical Sales')
-    plt.plot(forecast_df['date'], forecast_df['weekly_sales'], label='Forecasted Sales', marker='o')
+    plt.figure(figsize=(12, 6))
+    plt.plot(product_data['date'],
+             product_data['weekly_sales'], label='Historical Sales')
+    plt.plot(forecast_df['date'], forecast_df['weekly_sales'],
+             label='Forecasted Sales', marker='o')
     plt.title(f'Random Forest Forecast for Product {product_id}')
     plt.xlabel('Date')
     plt.ylabel('Weekly Sales')
@@ -294,9 +320,11 @@ def train_random_forest(merged_df, product_id):
     plt.show()
 
     # Since we don't have actual sales for the forecasted period, we can't compute MAE and RMSE
-    print(f"Random Forest Model - Product ID: {product_id}, Forecasted next {forecast_steps} weeks.")
+    print(
+        f"Random Forest Model - Product ID: {product_id}, Forecasted next {forecast_steps} weeks.")
 
     return model, forecast_df
+
 
 def train_xgboost_model(merged_df, product_id):
     """
@@ -313,10 +341,12 @@ def train_xgboost_model(merged_df, product_id):
     from xgboost import XGBRegressor
 
     # Filter data for the specific product
-    product_data = merged_df[merged_df['product_id'] == product_id].sort_values('date')
+    product_data = merged_df[merged_df['product_id']
+                             == product_id].sort_values('date')
 
     # Feature Engineering: Define features and target
-    features = ['discounted_price', 'actual_price', 'discount_percentage', 'rating', 'rating_count', 'month', 'week', 'is_holiday_season']
+    features = ['discounted_price', 'actual_price', 'discount_percentage',
+                'rating', 'rating_count', 'month', 'week', 'is_holiday_season']
     X = product_data[features]
     y = product_data['weekly_sales']
 
@@ -327,8 +357,9 @@ def train_xgboost_model(merged_df, product_id):
     # Define the forecast period (next 4 weeks)
     forecast_steps = 4
     last_date = product_data['date'].max()
-    future_dates = [last_date + timedelta(weeks=i) for i in range(1, forecast_steps + 1)]
-    
+    future_dates = [last_date + timedelta(weeks=i)
+                    for i in range(1, forecast_steps + 1)]
+
     # Create synthetic future data for prediction
     # Here, we assume that discount, price, rating remain the same, and set 'is_holiday_season' based on month
     last_product = product_data.iloc[-1]
@@ -357,9 +388,11 @@ def train_xgboost_model(merged_df, product_id):
     })
 
     # Plot historical and forecasted sales
-    plt.figure(figsize=(12,6))
-    plt.plot(product_data['date'], product_data['weekly_sales'], label='Historical Sales')
-    plt.plot(forecast_df['date'], forecast_df['weekly_sales'], label='Forecasted Sales', marker='o')
+    plt.figure(figsize=(12, 6))
+    plt.plot(product_data['date'],
+             product_data['weekly_sales'], label='Historical Sales')
+    plt.plot(forecast_df['date'], forecast_df['weekly_sales'],
+             label='Forecasted Sales', marker='o')
     plt.title(f'XGBoost Forecast for Product {product_id}')
     plt.xlabel('Date')
     plt.ylabel('Weekly Sales')
@@ -368,16 +401,18 @@ def train_xgboost_model(merged_df, product_id):
     plt.show()
 
     # Since we don't have actual sales for the forecasted period, we can't compute MAE and RMSE
-    print(f"XGBoost Model - Product ID: {product_id}, Forecasted next {forecast_steps} weeks.")
+    print(
+        f"XGBoost Model - Product ID: {product_id}, Forecasted next {forecast_steps} weeks.")
 
     return model, forecast_df
+
 
 def main():
     # Step 1: Preprocess and generate synthetic data
     input_file = 'amazon.csv'  # Replace with your actual input file path
     products_output = 'products.csv'
     sales_output = 'sales.csv'
-    #comment out to not generate new data
+    # comment out to not generate new data
     # preprocess_and_generate_synthetic_data(input_file, products_output, sales_output)
 
     # Step 2: Load the preprocessed data with proper date parsing
@@ -415,6 +450,7 @@ def main():
 
     # Step 8: Train and forecast using XGBoost
     train_xgboost_model(merged_df, sample_product_id)
+
 
 if __name__ == "__main__":
     main()
